@@ -824,6 +824,130 @@ footer .footer-stat-label {
   .modal { padding:24px; }
   .profile-panel { max-width:100%; }
 }
+
+/* ===== Profile Tabs ===== */
+.profile-tabs {
+  display:flex; gap:4px;
+  padding:0 16px;
+  border-bottom:1px solid var(--rule);
+  overflow-x:auto;
+}
+.profile-tab {
+  padding:10px 16px;
+  background:none; border:none;
+  color:var(--muted); font-size:0.85rem; font-weight:600;
+  cursor:pointer; font-family:inherit;
+  border-bottom:2px solid transparent;
+  transition:var(--transition);
+  white-space:nowrap;
+}
+.profile-tab:hover { color:var(--ink); }
+.profile-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+.profile-tab-content { display:none; }
+.profile-tab-content.active { display:block; }
+
+/* ===== Friends List ===== */
+.friends-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px;
+}
+.friends-count { font-size:0.85rem; color:var(--muted); }
+.friends-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(80px,1fr));
+  gap:10px; padding:0 16px 16px;
+}
+.friend-card {
+  text-align:center;
+  cursor:pointer;
+  transition:var(--transition);
+  border-radius:var(--radius-sm);
+  padding:8px 4px;
+}
+.friend-card:hover { background:var(--bg3); }
+.friend-avatar {
+  width:56px; height:56px;
+  border-radius:50%;
+  object-fit:cover;
+  background:var(--bg3);
+  margin:0 auto 6px;
+  display:block;
+  border:2px solid var(--rule);
+}
+.friend-avatar.online { border-color:var(--green); }
+.friend-avatar.ingame { border-color:var(--accent); }
+.friend-name {
+  font-size:0.72rem; font-weight:600;
+  color:var(--ink);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.friend-status {
+  font-size:0.6rem;
+  margin-top:2px;
+}
+.friend-status.online { color:var(--green); }
+.friend-status.ingame { color:var(--accent); }
+.friend-status.offline { color:var(--muted2); }
+
+.friend-game-banner {
+  background:linear-gradient(135deg,rgba(255,59,59,0.15),rgba(0,180,216,0.1));
+  border:1px solid var(--accent);
+  border-radius:var(--radius-md);
+  padding:10px 14px;
+  margin:8px 0;
+  display:flex; align-items:center; gap:10px;
+}
+.friend-game-info { flex:1; min-width:0; }
+.friend-game-name { font-size:0.82rem; font-weight:700; color:var(--ink); }
+.friend-game-loc { font-size:0.7rem; color:var(--muted); }
+.btn-join-server {
+  padding:6px 14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent3));
+  border:none; border-radius:var(--radius-sm);
+  color:#fff; font-size:0.75rem; font-weight:700;
+  cursor:pointer; font-family:inherit;
+  white-space:nowrap;
+  transition:var(--transition);
+}
+.btn-join-server:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(255,59,59,0.3); }
+
+/* ===== Groups List ===== */
+.groups-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:10px; padding:0 16px 16px;
+}
+.group-card {
+  display:flex; align-items:center; gap:10px;
+  background:var(--bg3);
+  border:1px solid var(--rule);
+  border-radius:var(--radius-md);
+  padding:10px;
+  cursor:pointer;
+  transition:var(--transition);
+}
+.group-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+.group-icon {
+  width:40px; height:40px;
+  border-radius:var(--radius-sm);
+  object-fit:cover;
+  background:var(--bg4);
+  flex-shrink:0;
+}
+.group-info { min-width:0; flex:1; }
+.group-name {
+  font-size:0.82rem; font-weight:600;
+  color:var(--ink);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.group-role { font-size:0.7rem; color:var(--muted); }
+.group-members { font-size:0.65rem; color:var(--muted2); }
+
+.loading-text {
+  text-align:center; padding:40px;
+  color:var(--muted); font-size:0.9rem;
+}
 </style>
 </head>
 <body>
@@ -950,7 +1074,18 @@ footer .footer-stat-label {
       </div>
     </div>
   </div>
+  <div class="profile-tabs" id="profileTabs" style="display:none;">
+    <button class="profile-tab active" data-tab="outfit">装扮</button>
+    <button class="profile-tab" data-tab="friends">好友</button>
+    <button class="profile-tab" data-tab="groups">群组</button>
+  </div>
   <div class="profile-body" id="profileBody"></div>
+  <div class="profile-tab-content active" id="tabFriends" style="display:none;">
+    <div class="loading-text" id="friendsLoading">加载好友列表中...</div>
+  </div>
+  <div class="profile-tab-content" id="tabGroups" style="display:none;">
+    <div class="loading-text" id="groupsLoading">加载群组列表中...</div>
+  </div>
 </div>
 
 <script>
@@ -1185,7 +1320,13 @@ var PROXIES = [
     user: function(uid) { return "https://users.roproxy.com/v1/users/" + uid; },
     headshot: function(uid) { return "https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
     fullAvatar: function(uid) { return "https://thumbnails.roproxy.com/v1/users/avatar?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
-    avatar: function(uid) { return "https://avatar.roproxy.com/v1/users/" + uid + "/avatar"; }
+    avatar: function(uid) { return "https://avatar.roproxy.com/v1/users/" + uid + "/avatar"; },
+    friends: function(uid) { return "https://friends.roproxy.com/v1/users/" + uid + "/friends"; },
+    groups: function(uid) { return "https://groups.roproxy.com/v2/users/" + uid + "/groups/roles"; },
+    presence: function() { return "https://presence.roproxy.com/v1/presence/users"; },
+    multiHeadshot: function(uids) { return "https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=" + uids + "&size=150x150&format=Png&isCircular=false"; },
+    gameIcon: function(universeId) { return "https://thumbnails.roproxy.com/v1/games/icons?universeIds=" + universeId + "&size=128x128&format=Png&isCircular=false"; },
+    gameInfo: function(universeId) { return "https://games.roproxy.com/v1/games?universeIds=" + universeId; }
   }
 ];
 
@@ -1367,6 +1508,12 @@ async function robloxLogin() {
     document.getElementById("userAvatarImg").src = headshotUrl;
     document.getElementById("userAvatarBtn").classList.add("visible");
 
+    // 显示标签页 + 设置全局变量
+    document.getElementById("profileTabs").style.display = "flex";
+    currentUid = uid;
+    friendsLoaded = false;
+    groupsLoaded = false;
+
     // Change login button to show username
     document.getElementById("loginBtn").innerHTML = '<span>' + displayName + '</span>';
     document.getElementById("loginBtn").onclick = function() {
@@ -1473,6 +1620,475 @@ setTimeout(fetchLiveGameData, 3000);
 
 // 每 5 分钟自动刷新一次
 setInterval(fetchLiveGameData, 5 * 60 * 1000);
+
+// ===== 全局变量：当前查看的用户 ID =====
+var currentUid = null;
+var friendsLoaded = false;
+var groupsLoaded = false;
+
+// ===== 标签页切换 =====
+function switchProfileTab(tabName) {
+  // 切换按钮 active 状态
+  document.querySelectorAll(".profile-tab").forEach(function(btn) {
+    btn.classList.toggle("active", btn.dataset.tab === tabName);
+  });
+  // 切换内容显示
+  var profileBody = document.getElementById("profileBody");
+  var tabFriends = document.getElementById("tabFriends");
+  var tabGroups = document.getElementById("tabGroups");
+
+  if (tabName === "outfit") {
+    profileBody.style.display = "";
+    tabFriends.style.display = "none";
+    tabGroups.style.display = "none";
+  } else if (tabName === "friends") {
+    profileBody.style.display = "none";
+    tabFriends.style.display = "block";
+    tabGroups.style.display = "none";
+    if (!friendsLoaded && currentUid) fetchFriends(currentUid);
+  } else if (tabName === "groups") {
+    profileBody.style.display = "none";
+    tabFriends.style.display = "none";
+    tabGroups.style.display = "block";
+    if (!groupsLoaded && currentUid) fetchGroups(currentUid);
+  }
+}
+
+// 标签页点击事件
+document.querySelectorAll(".profile-tab").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    switchProfileTab(this.dataset.tab);
+  });
+});
+
+// ===== 在线状态获取（POST + text/plain 绕过 CORS 预检）=====
+async function fetchPresence(userIds) {
+  if (!userIds || userIds.length === 0) return {};
+  var presenceMap = {};
+  // 分批请求，每批最多 100 个
+  var batchSize = 100;
+  for (var i = 0; i < userIds.length; i += batchSize) {
+    var batch = userIds.slice(i, i + batchSize);
+    try {
+      var url = PROXIES[0].presence();
+      var resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ userIds: batch })
+      });
+      if (resp.ok) {
+        var data = await resp.json();
+        if (data.userPresences) {
+          data.userPresences.forEach(function(p) {
+            presenceMap[p.userId] = p;
+          });
+        }
+      }
+    } catch(e) {
+      console.warn("获取在线状态失败:", e.message);
+    }
+  }
+  return presenceMap;
+}
+
+// ===== 批量获取好友头像 =====
+async function fetchMultiHeadshots(uids) {
+  var headshotMap = {};
+  if (!uids || uids.length === 0) return headshotMap;
+  // 分批，每批最多 100 个
+  var batchSize = 100;
+  for (var i = 0; i < uids.length; i += batchSize) {
+    var batch = uids.slice(i, i + batchSize);
+    try {
+      var url = PROXIES[0].multiHeadshot(batch.join(","));
+      var resp = await fetch(url);
+      if (resp.ok) {
+        var data = await resp.json();
+        if (data.data) {
+          data.data.forEach(function(h) {
+            headshotMap[h.targetId] = h.imageUrl;
+          });
+        }
+      }
+    } catch(e) {
+      console.warn("获取好友头像失败:", e.message);
+    }
+  }
+  return headshotMap;
+}
+
+// ===== 获取游戏信息（名称 + placeId）=====
+async function fetchGameInfo(universeId) {
+  try {
+    var url = PROXIES[0].gameInfo(universeId);
+    var resp = await fetch(url);
+    if (resp.ok) {
+      var data = await resp.json();
+      if (data.data && data.data[0]) return data.data[0];
+    }
+  } catch(e) {
+    console.warn("获取游戏信息失败:", e.message);
+  }
+  return null;
+}
+
+// ===== 好友列表 + 在线状态 + 加入服务器 =====
+async function fetchFriends(uid) {
+  var container = document.getElementById("tabFriends");
+  container.innerHTML = '<div class="loading-text">加载好友列表中...</div>';
+
+  try {
+    // 获取好友列表
+    var friendsData = await fetchWithFallback(function(p) { return p.friends(uid); });
+    var friends = friendsData.data || [];
+
+    if (friends.length === 0) {
+      container.innerHTML = '<div class="loading-text">该用户没有好友或好友列表不可见</div>';
+      friendsLoaded = true;
+      return;
+    }
+
+    container.innerHTML = '<div class="loading-text">获取好友在线状态中...</div>';
+
+    // 收集好友 ID
+    var friendIds = friends.map(function(f) { return f.id; });
+
+    // 并行获取在线状态和头像
+    var results = await Promise.all([
+      fetchPresence(friendIds),
+      fetchMultiHeadshots(friendIds)
+    ]);
+    var presenceMap = results[0];
+    var headshotMap = results[1];
+
+    // 统计在线/游戏中
+    var onlineCount = 0;
+    var inGameCount = 0;
+    friends.forEach(function(f) {
+      var p = presenceMap[f.id];
+      if (p) {
+        if (p.userPresenceType === 1 || p.userPresenceType === 2) onlineCount++;
+        if (p.userPresenceType === 2) inGameCount++;
+      }
+    });
+
+    // 渲染头部 + 列表
+    var html = '<div class="friends-header">' +
+      '<span class="friends-count">好友总数: ' + friends.length + ' · 在线: ' + onlineCount + ' · 游戏中: ' + inGameCount + '</span>' +
+    '</div>';
+
+    // 先按状态排序：游戏中 > 在线 > 离线
+    friends.sort(function(a, b) {
+      var pa = presenceMap[a.id] ? presenceMap[a.id].userPresenceType : 0;
+      var pb = presenceMap[b.id] ? presenceMap[b.id].userPresenceType : 0;
+      return pb - pa;
+    });
+
+    // 游戏中的好友 banner
+    var inGameFriends = friends.filter(function(f) {
+      var p = presenceMap[f.id];
+      return p && p.userPresenceType === 2;
+    });
+
+    if (inGameFriends.length > 0) {
+      html += '<div style="padding:0 16px;">';
+      inGameFriends.forEach(function(f) {
+        var p = presenceMap[f.id];
+        var headshot = headshotMap[f.id] || '';
+        var gameName = p.lastLocation || '未知游戏';
+        var placeId = p.placeId || '';
+        var gameId = p.gameId || '';
+        var universeId = p.universeId || '';
+
+        html += '<div class="friend-game-banner">' +
+          (headshot ? '<img src="' + headshot + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '') +
+          '<div class="friend-game-info">' +
+            '<div class="friend-game-name">' + (f.displayName || f.name) + ' 正在玩</div>' +
+            '<div class="friend-game-loc">' + gameName + '</div>' +
+          '</div>';
+
+        if (placeId && gameId) {
+          html += '<button class="btn-join-server" onclick="joinServer(\'' + placeId + '\', \'' + gameId + '\')">加入服务器</button>';
+        } else if (placeId) {
+          html += '<button class="btn-join-server" onclick="joinServer(\'' + placeId + '\', \'\')">加入游戏</button>';
+        } else if (universeId) {
+          html += '<button class="btn-join-server" onclick="joinByUniverse(\'' + universeId + '\')">加入游戏</button>';
+        }
+
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    // 好友网格
+    html += '<div class="friends-grid">';
+    friends.forEach(function(f) {
+      var p = presenceMap[f.id];
+      var headshot = headshotMap[f.id] || '';
+      var presenceType = p ? p.userPresenceType : 0;
+      // 0=离线, 1=在线(网站), 2=游戏中, 3=在工作室
+      var statusClass = "offline";
+      var statusText = "离线";
+      if (presenceType === 2) { statusClass = "ingame"; statusText = "游戏中"; }
+      else if (presenceType === 1) { statusClass = "online"; statusText = "在线"; }
+      else if (presenceType === 3) { statusClass = "online"; statusText = "工作室"; }
+
+      html += '<div class="friend-card" onclick="searchUserById(' + f.id + ')">' +
+        '<img class="friend-avatar ' + statusClass + '" src="' + headshot + '" alt="' + (f.displayName || f.name) + '" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2256%22 height=%2256%22%3E%3Crect fill=%22%23252a3a%22 width=%2256%22 height=%2256%22/%3E%3C/svg%3E\'">' +
+        '<div class="friend-name">' + (f.displayName || f.name) + '</div>' +
+        '<div class="friend-status ' + statusClass + '">' + statusText + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    container.innerHTML = html;
+    friendsLoaded = true;
+
+  } catch(err) {
+    container.innerHTML = '<div class="loading-text">获取好友列表失败: ' + (err.message || '未知错误') + '<br><button class="btn-join-server" style="margin-top:12px;" onclick="fetchFriends(currentUid)">重试</button></div>';
+  }
+}
+
+// ===== 加入服务器（通过 Roblox 深链接）=====
+function joinServer(placeId, gameId) {
+  // 优先使用 roblox:// 协议，回退到网页链接
+  var robloxUrl = "roblox://placeId=" + placeId;
+  if (gameId) robloxUrl += "&gameId=" + gameId;
+  var webUrl = "https://www.roblox.com/games/start?placeId=" + placeId;
+  if (gameId) webUrl += "&gameId=" + gameId;
+
+  // 尝试通过深链接打开 Roblox 客户端
+  var iframe = document.createElement("iframe");
+  iframe.style.display = "none";
+  iframe.src = robloxUrl;
+  document.body.appendChild(iframe);
+
+  // 3秒后移除 iframe，同时提供网页链接
+  setTimeout(function() {
+    document.body.removeChild(iframe);
+  }, 3000);
+
+  // 同时在新标签页打开网页版作为回退
+  window.open(webUrl, "_blank");
+}
+
+// 通过 universeId 获取 placeId 后加入
+async function joinByUniverse(universeId) {
+  var gameInfo = await fetchGameInfo(universeId);
+  if (gameInfo && gameInfo.rootPlaceId) {
+    joinServer(gameInfo.rootPlaceId, "");
+  } else {
+    alert("无法获取游戏信息，请稍后重试");
+  }
+}
+
+// ===== 通过用户 ID 搜索并展示资料 =====
+async function searchUserById(targetUid) {
+  // 显示加载状态
+  document.getElementById("profileTabs").style.display = "flex";
+  document.getElementById("profileBody").style.display = "";
+  document.getElementById("tabFriends").style.display = "none";
+  document.getElementById("tabGroups").style.display = "none";
+  document.querySelectorAll(".profile-tab").forEach(function(btn) {
+    btn.classList.toggle("active", btn.dataset.tab === "outfit");
+  });
+
+  document.getElementById("profileTop").innerHTML =
+    '<div style="text-align:center; width:100%;">' +
+      '<div class="spinner" style="border-color:var(--bg3); border-top-color:var(--accent);"></div>' +
+      '<p style="color:var(--muted); margin-top:8px; font-size:0.85rem;">加载用户资料中...</p>' +
+    '</div>';
+  document.getElementById("profileBody").innerHTML = "";
+  profilePanel.classList.add("show");
+
+  try {
+    var results = await Promise.all([
+      fetchWithFallback(function(p) { return p.user(targetUid); }),
+      fetchWithFallback(function(p) { return p.headshot(targetUid); }),
+      fetchWithFallback(function(p) { return p.fullAvatar(targetUid); }),
+      fetchWithFallback(function(p) { return p.avatar(targetUid); })
+    ]);
+
+    var userResp = results[0];
+    var headResp = results[1];
+    var fullResp = results[2];
+    var avatarResp = results[3];
+
+    var headshotUrl = headResp.data && headResp.data[0] ? headResp.data[0].imageUrl : "";
+    var fullAvatarUrl = fullResp.data && fullResp.data[0] ? fullResp.data[0].imageUrl : "";
+    var displayName = userResp.displayName || userResp.name;
+
+    var verifiedBadge = userResp.hasVerifiedBadge ? '<span class="profile-badge">✓ 认证</span>' : '';
+
+    document.getElementById("profileTop").innerHTML =
+      '<img class="profile-headshot" src="' + headshotUrl + '" alt="' + displayName + '" onerror="this.src=\'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22%3E%3Crect fill=%22%231e1e2a%22 width=%2280%22 height=%2280%22/%3E%3C/svg%3E\'">' +
+      '<div class="profile-name-row">' +
+        '<div class="profile-display-name">' + displayName + verifiedBadge + '</div>' +
+        '<div class="profile-username">@' + userResp.name + '</div>' +
+        (userResp.isBanned ? '<div class="profile-badge" style="color:#ff6b6b;">已封禁</div>' : '') +
+      '</div>';
+
+    // 重新使用 robloxLogin 中的装扮渲染逻辑
+    renderProfileBody(userResp, avatarResp, fullAvatarUrl, displayName, targetUid);
+
+    // 更新全局变量
+    currentUid = targetUid;
+    friendsLoaded = false;
+    groupsLoaded = false;
+
+  } catch(err) {
+    document.getElementById("profileBody").innerHTML = '<div class="loading-text">加载失败: ' + (err.message || '未知错误') + '</div>';
+  }
+}
+
+// ===== 渲染装扮资料到 profileBody =====
+function renderProfileBody(userResp, avatarResp, fullAvatarUrl, displayName, uid) {
+  var bodyColors = avatarResp.bodyColors || {};
+  var colorIds = { head: bodyColors.headColorId, torso: bodyColors.torsoColorId, leftArm: bodyColors.leftArmColorId, rightArm: bodyColors.rightArmColorId, leftLeg: bodyColors.leftLegColorId, rightLeg: bodyColors.rightLegColorId };
+
+  var robloxColors = {
+    1:"#f8f8dc",2:"#a3a2a5",3:"#9b9b9b",5:"#911817",6:"#7b3a15",8:"#164a25",9:"#4b974b",
+    10:"#fec865",11:"#d9a45b",12:"#208640",18:"#8a8a8a",21:"#fd9c3f",24:"#cc7e3a",26:"#c2c2c2",
+    37:"#cc4f4f",38:"#a05a3a",102:"#1083d3",104:"#7e3a3a",111:"#9aa0a6",141:"#173c3c",
+    151:"#fbf3d8",192:"#d09e6b",194:"#e8b07d",208:"#8a5a3c",217:"#fd8721",226:"#e0b68c",
+    153:"#5e875e",293:"#a3874a",1001:"#fc8a23"
+  };
+
+  var colorsHtml = '<div class="body-colors">';
+  Object.keys(colorIds).forEach(function(part) {
+    var cid = colorIds[part];
+    var color = robloxColors[cid] || "#888";
+    colorsHtml += '<div class="body-color-swatch" style="background:' + color + ';" title="' + part + ': #' + cid + '"></div>';
+  });
+  colorsHtml += '</div>';
+
+  var assets = avatarResp.assets || [];
+  var outfitHtml = "";
+  if (assets.length > 0) {
+    outfitHtml = '<div class="outfit-grid">';
+    assets.forEach(function(a) {
+      outfitHtml +=
+        '<div class="outfit-item">' +
+          '<div class="outfit-item-name" title="' + (a.name||'') + '">' + (a.name||'未知') + '</div>' +
+          '<div class="outfit-item-type">' + (a.assetType ? a.assetType.name : '') + '</div>' +
+        '</div>';
+    });
+    outfitHtml += '</div>';
+  } else {
+    outfitHtml = '<p style="color:var(--muted); font-size:0.85rem;">未找到装扮信息</p>';
+  }
+
+  var createdDate = userResp.created ? new Date(userResp.created) : null;
+  var ageStr = "未知";
+  if (createdDate) {
+    var now = new Date();
+    var years = (now - createdDate) / (365.25 * 24 * 3600 * 1000);
+    ageStr = years.toFixed(1) + " 年";
+  }
+
+  var avatarType = avatarResp.playerAvatarType || "未知";
+  var scales = avatarResp.scales || {};
+
+  document.getElementById("profileBody").innerHTML =
+    '<div class="profile-section">' +
+      '<div class="profile-section-title">全身头像</div>' +
+      '<img class="profile-avatar-full" src="' + fullAvatarUrl + '" alt="Full Avatar" onerror="this.style.display=\'none\'">' +
+    '</div>' +
+    '<div class="profile-section">' +
+      '<div class="profile-section-title">账号信息</div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">用户名</span><span class="profile-info-value">@' + userResp.name + '</span></div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">显示名称</span><span class="profile-info-value">' + displayName + '</span></div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">用户 ID</span><span class="profile-info-value">' + uid + '</span></div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">注册时间</span><span class="profile-info-value">' + fmtDate(userResp.created) + '</span></div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">账号年龄</span><span class="profile-info-value">' + ageStr + '</span></div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">认证状态</span><span class="profile-info-value">' + (userResp.hasVerifiedBadge ? '已认证 ✓' : '未认证') + '</span></div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">封禁状态</span><span class="profile-info-value">' + (userResp.isBanned ? '已封禁' : '正常') + '</span></div>' +
+    '</div>' +
+    '<div class="profile-section">' +
+      '<div class="profile-section-title">头像类型 & 体型</div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">骨架类型</span><span class="profile-info-value">' + avatarType + '</span></div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">身高</span><span class="profile-info-value">' + (scales.height||'?') + '</span></div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">体重</span><span class="profile-info-value">' + (scales.bodyType||'?') + '</span></div>' +
+      '<div class="profile-info-row"><span class="profile-info-label">头部比例</span><span class="profile-info-value">' + (scales.head||'?') + '</span></div>' +
+    '</div>' +
+    '<div class="profile-section">' +
+      '<div class="profile-section-title">当前装扮 (' + assets.length + ' 件)</div>' +
+      outfitHtml +
+    '</div>' +
+    '<div class="profile-section">' +
+      '<div class="profile-section-title">身体颜色</div>' +
+      colorsHtml +
+    '</div>' +
+    (userResp.description ?
+      '<div class="profile-section">' +
+        '<div class="profile-section-title">个人简介</div>' +
+        '<p style="font-size:0.85rem; color:var(--muted); line-height:1.6;">' + userResp.description.substring(0,500) + '</p>' +
+      '</div>' : ''
+    ) +
+    '<div class="profile-section">' +
+      '<p style="font-size:0.75rem; color:var(--muted2); text-align:center;">以上信息均为 Roblox 公开数据，仅展示不修改</p>' +
+    '</div>';
+}
+
+// ===== 群组列表 =====
+async function fetchGroups(uid) {
+  var container = document.getElementById("tabGroups");
+  container.innerHTML = '<div class="loading-text">加载群组列表中...</div>';
+
+  try {
+    var groupsData = await fetchWithFallback(function(p) { return p.groups(uid); });
+    var groups = groupsData.data || [];
+
+    if (groups.length === 0) {
+      container.innerHTML = '<div class="loading-text">该用户没有加入任何群组</div>';
+      groupsLoaded = true;
+      return;
+    }
+
+    // 获取群组图标
+    var groupIds = groups.map(function(g) { return g.group.id; });
+    var iconMap = {};
+    try {
+      var iconUrl = "https://thumbnails.roproxy.com/v1/groups/icons?groupIds=" + groupIds.slice(0, 100).join(",") + "&size=150x150&format=Png&isCircular=false";
+      var iconResp = await fetch(iconUrl);
+      if (iconResp.ok) {
+        var iconData = await iconResp.json();
+        if (iconData.data) {
+          iconData.data.forEach(function(ic) {
+            iconMap[ic.targetId] = ic.imageUrl;
+          });
+        }
+      }
+    } catch(e) {
+      console.warn("获取群组图标失败:", e.message);
+    }
+
+    var html = '<div class="friends-header"><span class="friends-count">群组总数: ' + groups.length + '</span></div>';
+    html += '<div class="groups-grid">';
+    groups.forEach(function(g) {
+      var group = g.group;
+      var icon = iconMap[group.id] || '';
+      var role = g.role ? g.role.name : '成员';
+      var members = group.memberCount ? group.memberCount.toLocaleString() : '?';
+
+      html += '<div class="group-card" onclick="window.open(\'https://www.roblox.com/groups/' + group.id + '\', \'_blank\')">' +
+        (icon ? '<img class="group-icon" src="' + icon + '" alt="' + (group.name||'') + '" onerror="this.style.display=\'none\'">' : '<div class="group-icon" style="display:flex;align-items:center;justify-content:center;background:var(--bg4);font-size:1.2rem;">🏛</div>') +
+        '<div class="group-info">' +
+          '<div class="group-name">' + (group.name || '未知群组') + '</div>' +
+          '<div class="group-role">' + role + '</div>' +
+          '<div class="group-members">' + members + ' 成员</div>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    container.innerHTML = html;
+    groupsLoaded = true;
+
+  } catch(err) {
+    container.innerHTML = '<div class="loading-text">获取群组列表失败: ' + (err.message || '未知错误') + '<br><button class="btn-join-server" style="margin-top:12px;" onclick="fetchGroups(currentUid)">重试</button></div>';
+  }
+}
 </script>
 
 </body>
