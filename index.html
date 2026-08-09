@@ -1173,23 +1173,25 @@ document.getElementById("usernameInput").addEventListener("keypress", function(e
   if (e.key === "Enter") document.getElementById("loginSubmit").click();
 });
 
-// ===== 多代理容错机制（无需后端服务器）=====
+// ===== 代理配置：Vercel 代理（主）+ roproxy（备用）=====
+var VERCEL_PROXY = "https://roblox-cors-proxy.vercel.app/api/proxy?url=";
+
 var PROXIES = [
   {
-    name: "roproxy",
+    name: "Vercel代理",
+    search: function(username) { return VERCEL_PROXY + encodeURIComponent("https://users.roblox.com/v1/users/search?keyword=" + username + "&limit=10"); },
+    user: function(uid) { return VERCEL_PROXY + encodeURIComponent("https://users.roblox.com/v1/users/" + uid); },
+    headshot: function(uid) { return VERCEL_PROXY + encodeURIComponent("https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"); },
+    fullAvatar: function(uid) { return VERCEL_PROXY + encodeURIComponent("https://thumbnails.roblox.com/v1/users/avatar?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"); },
+    avatar: function(uid) { return VERCEL_PROXY + encodeURIComponent("https://avatar.roblox.com/v1/users/" + uid + "/avatar"); }
+  },
+  {
+    name: "roproxy备用",
     search: function(username) { return "https://users.roproxy.com/v1/users/search?keyword=" + encodeURIComponent(username) + "&limit=10"; },
     user: function(uid) { return "https://users.roproxy.com/v1/users/" + uid; },
     headshot: function(uid) { return "https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
     fullAvatar: function(uid) { return "https://thumbnails.roproxy.com/v1/users/avatar?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
     avatar: function(uid) { return "https://avatar.roproxy.com/v1/users/" + uid + "/avatar"; }
-  },
-  {
-    name: "roxytheproxy",
-    search: function(username) { return "https://roxytheproxy.com/users.roblox.com/v1/users/search?keyword=" + encodeURIComponent(username) + "&limit=10"; },
-    user: function(uid) { return "https://roxytheproxy.com/users.roblox.com/v1/users/" + uid; },
-    headshot: function(uid) { return "https://roxytheproxy.com/thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
-    fullAvatar: function(uid) { return "https://roxytheproxy.com/thumbnails.roblox.com/v1/users/avatar?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
-    avatar: function(uid) { return "https://roxytheproxy.com/avatar.roblox.com/v1/users/" + uid + "/avatar"; }
   }
 ];
 
