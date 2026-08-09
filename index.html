@@ -1095,6 +1095,9 @@ var GAMES_DATA = [{"universeId": 66654135, "name": "Murder Mystery 2", "desc": "
 // ===== 后端地址（仅用于登录相关，好友和群组已改为直连） =====
 var BACKEND_URL = "https://roblox-backend-peach.vercel.app";
 
+// ===== CORS 代理（用于绕过浏览器的跨域限制） =====
+var CORS_PROXY = "https://api.allorigins.win/raw?url=";
+
 // Genre mapping
 var genreMap = {
   "All": "全部", "Adventure": "冒险", "Horror": "恐怖", "Fighting": "格斗",
@@ -1516,7 +1519,7 @@ document.querySelectorAll(".profile-tab").forEach(function(btn) {
   });
 });
 
-// ===== 在线状态获取（直接请求 Roblox） =====
+// ===== 在线状态获取（直接请求 Roblox，若失败则不影响主流程） =====
 async function fetchPresence(userIds) {
   if (!userIds || userIds.length === 0) return {};
   var presenceMap = {};
@@ -1539,12 +1542,13 @@ async function fetchPresence(userIds) {
       }
     } catch(e) {
       console.warn("获取在线状态失败:", e.message);
+      // 忽略错误，继续
     }
   }
   return presenceMap;
 }
 
-// ===== 批量获取好友头像（直接请求 Roblox） =====
+// ===== 批量获取好友头像（通过 CORS 代理） =====
 async function fetchMultiHeadshots(uids) {
   var headshotMap = {};
   if (!uids || uids.length === 0) return headshotMap;
@@ -1552,7 +1556,8 @@ async function fetchMultiHeadshots(uids) {
   for (var i = 0; i < uids.length; i += batchSize) {
     var batch = uids.slice(i, i + batchSize);
     try {
-      var resp = await fetch('https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=' + batch.join(',') + '&size=150x150&format=Png&isCircular=false');
+      var url = 'https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=' + batch.join(',') + '&size=150x150&format=Png&isCircular=false';
+      var resp = await fetch(CORS_PROXY + encodeURIComponent(url));
       if (resp.ok) {
         var data = await resp.json();
         if (data.data) {
@@ -1582,13 +1587,14 @@ async function fetchGameInfo(universeId) {
   return null;
 }
 
-// ===== 好友列表（直接请求 Roblox） =====
+// ===== 好友列表（通过 CORS 代理） =====
 async function fetchFriends(uid) {
   var container = document.getElementById("tabFriends");
   container.innerHTML = '<div class="loading-text">加载好友列表中...</div>';
 
   try {
-    var resp = await fetch('https://friends.roblox.com/v1/users/' + uid + '/friends?sortOrder=Desc&limit=100');
+    var url = 'https://friends.roblox.com/v1/users/' + uid + '/friends?sortOrder=Desc&limit=100';
+    var resp = await fetch(CORS_PROXY + encodeURIComponent(url));
     if (!resp.ok) throw new Error("获取好友列表失败");
     var friendsData = await resp.json();
     var friends = friendsData.data || [];
@@ -1868,13 +1874,14 @@ function renderProfileBody(userResp, avatarResp, fullAvatarUrl, displayName, uid
     '</div>';
 }
 
-// ===== 群组列表（直接请求 Roblox） =====
+// ===== 群组列表（通过 CORS 代理） =====
 async function fetchGroups(uid) {
   var container = document.getElementById("tabGroups");
   container.innerHTML = '<div class="loading-text">加载群组列表中...</div>';
 
   try {
-    var resp = await fetch('https://groups.roblox.com/v2/users/' + uid + '/groups/roles');
+    var groupsUrl = 'https://groups.roblox.com/v2/users/' + uid + '/groups/roles';
+    var resp = await fetch(CORS_PROXY + encodeURIComponent(groupsUrl));
     if (!resp.ok) throw new Error("获取群组列表失败");
     var groupsData = await resp.json();
     var groups = groupsData.data || [];
@@ -1885,11 +1892,12 @@ async function fetchGroups(uid) {
       return;
     }
 
-    // 获取群组图标（直接请求 Roblox）
+    // 获取群组图标（通过 CORS 代理）
     var iconMap = {};
     try {
       var groupIds = groups.map(function(g) { return g.group.id; });
-      var iconResp = await fetch('https://thumbnails.roblox.com/v1/groups/icons?groupIds=' + groupIds.slice(0, 100).join(',') + '&size=150x150&format=Png&isCircular=false');
+      var iconUrl = 'https://thumbnails.roblox.com/v1/groups/icons?groupIds=' + groupIds.slice(0, 100).join(',') + '&size=150x150&format=Png&isCircular=false';
+      var iconResp = await fetch(CORS_PROXY + encodeURIComponent(iconUrl));
       if (iconResp.ok) {
         var iconData = await iconResp.json();
         if (iconData.data) {
