@@ -1173,14 +1173,46 @@ document.getElementById("usernameInput").addEventListener("keypress", function(e
   if (e.key === "Enter") document.getElementById("loginSubmit").click();
 });
 
-// Roblox API base URLs via roproxy
-var API = {
-  usernames: "https://users.roproxy.com/v1/usernames/users",
-  user: function(uid) { return "https://users.roproxy.com/v1/users/" + uid; },
-  headshot: function(uid) { return "https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
-  fullAvatar: function(uid) { return "https://thumbnails.roproxy.com/v1/users/avatar?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
-  avatar: function(uid) { return "https://avatar.roproxy.com/v1/users/" + uid + "/avatar"; }
-};
+// ===== 多代理容错机制（无需后端服务器）=====
+var PROXIES = [
+  {
+    name: "roproxy",
+    usernames: "https://users.roproxy.com/v1/usernames/users",
+    user: function(uid) { return "https://users.roproxy.com/v1/users/" + uid; },
+    headshot: function(uid) { return "https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
+    fullAvatar: function(uid) { return "https://thumbnails.roproxy.com/v1/users/avatar?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
+    avatar: function(uid) { return "https://avatar.roproxy.com/v1/users/" + uid + "/avatar"; }
+  },
+  {
+    name: "roxytheproxy",
+    usernames: "https://roxytheproxy.com/users.roblox.com/v1/usernames/users",
+    user: function(uid) { return "https://roxytheproxy.com/users.roblox.com/v1/users/" + uid; },
+    headshot: function(uid) { return "https://roxytheproxy.com/thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
+    fullAvatar: function(uid) { return "https://roxytheproxy.com/thumbnails.roblox.com/v1/users/avatar?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
+    avatar: function(uid) { return "https://roxytheproxy.com/avatar.roblox.com/v1/users/" + uid + "/avatar"; }
+  }
+];
+
+var currentProxy = 0;
+
+// 带容错的 fetch 函数：第一个代理失败自动切换到第二个
+async function fetchWithFallback(urlFn, options) {
+  for (var i = 0; i < PROXIES.length; i++) {
+    var proxyIdx = (currentProxy + i) % PROXIES.length;
+    var proxy = PROXIES[proxyIdx];
+    try {
+      var url = typeof urlFn === "function" ? urlFn(proxy) : urlFn;
+      var resp = await fetch(url, options);
+      if (resp.ok) {
+        currentProxy = proxyIdx;
+        return await resp.json();
+      }
+    } catch(e) {
+      console.warn(proxy.name + " 失败，尝试下一个代理...", e.message);
+    }
+  }
+  throw new Error("所有代理都失败了，请稍后重试");
+}
 
 async function robloxLogin() {
   var username = document.getElementById("usernameInput").value.trim();
@@ -1199,14 +1231,13 @@ async function robloxLogin() {
 
   try {
     // Step 1: Username -> User ID
-    var resp = await fetch(API.usernames, {
+    var data = await fetchWithFallback(function(proxy) {
+      return proxy.usernames;
+    }, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ usernames: [username], excludeBannedUsers: true })
     });
-
-    if (!resp.ok) throw new Error("API请求失败");
-    var data = await resp.json();
 
     if (!data.data || data.data.length === 0) {
       throw new Error("找不到用户: " + username);
@@ -1217,13 +1248,18 @@ async function robloxLogin() {
 
     btn.innerHTML = '<span class="spinner"></span> 获取头像...';
 
-    // Step 2: Get user details, headshot, full avatar, outfit
-    var [userResp, headResp, fullResp, avatarResp] = await Promise.all([
-      fetch(API.user(uid)).then(function(r) { return r.json(); }),
-      fetch(API.headshot(uid)).then(function(r) { return r.json(); }),
-      fetch(API.fullAvatar(uid)).then(function(r) { return r.json(); }),
-      fetch(API.avatar(uid)).then(function(r) { return r.json(); })
+    // Step 2: 并行获取所有数据（带容错）
+    var results = await Promise.all([
+      fetchWithFallback(function(p) { return p.user(uid); }),
+      fetchWithFallback(function(p) { return p.headshot(uid); }),
+      fetchWithFallback(function(p) { return p.fullAvatar(uid); }),
+      fetchWithFallback(function(p) { return p.avatar(uid); })
     ]);
+
+    var userResp = results[0];
+    var headResp = results[1];
+    var fullResp = results[2];
+    var avatarResp = results[3];
 
     // Build profile
     var headshotUrl = headResp.data && headResp.data[0] ? headResp.data[0].imageUrl : "";
