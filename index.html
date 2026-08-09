@@ -1177,7 +1177,7 @@ document.getElementById("usernameInput").addEventListener("keypress", function(e
 var PROXIES = [
   {
     name: "roproxy",
-    usernames: "https://users.roproxy.com/v1/usernames/users",
+    search: function(username) { return "https://users.roproxy.com/v1/users/search?keyword=" + encodeURIComponent(username) + "&limit=10"; },
     user: function(uid) { return "https://users.roproxy.com/v1/users/" + uid; },
     headshot: function(uid) { return "https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
     fullAvatar: function(uid) { return "https://thumbnails.roproxy.com/v1/users/avatar?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
@@ -1185,7 +1185,7 @@ var PROXIES = [
   },
   {
     name: "roxytheproxy",
-    usernames: "https://roxytheproxy.com/users.roblox.com/v1/usernames/users",
+    search: function(username) { return "https://roxytheproxy.com/users.roblox.com/v1/users/search?keyword=" + encodeURIComponent(username) + "&limit=10"; },
     user: function(uid) { return "https://roxytheproxy.com/users.roblox.com/v1/users/" + uid; },
     headshot: function(uid) { return "https://roxytheproxy.com/thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
     fullAvatar: function(uid) { return "https://roxytheproxy.com/thumbnails.roblox.com/v1/users/avatar?userIds=" + uid + "&size=420x420&format=Png&isCircular=false"; },
@@ -1230,13 +1230,9 @@ async function robloxLogin() {
   btn.innerHTML = '<span class="spinner"></span> 查找中...';
 
   try {
-    // Step 1: Username -> User ID
+    // Step 1: Username -> User ID (GET请求，不触发CORS预检)
     var data = await fetchWithFallback(function(proxy) {
-      return proxy.usernames;
-    }, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ usernames: [username], excludeBannedUsers: true })
+      return proxy.search(username);
     });
 
     if (!data.data || data.data.length === 0) {
